@@ -5,7 +5,7 @@
 [void][Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms.DataVisualization")
 
 
-$URLListFile = "D:\powershell\url\checkstiemposweb\efeList.txt"
+$URLListFile = "G:\github\checkstiemposweb\checktiemposweb\efeList.txt"
 #$datosservidores=@{}
 
 $URLList = Get-Content $URLListFile -ErrorAction SilentlyContinue 
@@ -13,17 +13,23 @@ $URLList = Get-Content $URLListFile -ErrorAction SilentlyContinue
 #$uri="http://grafica2.madrid.efe.es/efe"
 
 #$uriping="grafica2.madrid.efe.es"
-$htmlgraficas="D:\powershell\url\checkstiemposweb\htmlgraficas.html"
+$htmlgraficas="G:\github\checkstiemposweb\checktiemposweb\htmlgraficas.html"
 "">$htmlgraficas
 
 
-$pings=@()
-$respuestas=@()
-$j=0
+$tiempo_entre_medidas=5
+$numero_medidas=100
+$responde_al_ping=$FALSE
+
 "<HTML><TITLE>TIEMPOS WEBS EFE</TITLE><BODY><H2> WEBS EFE</H2><Table>" >> $htmlgraficas
 
 Foreach($uri in $URLList) { 
 
+Write-Host $uri
+
+$pings=@()
+$respuestas=@()
+$j=0
 
 
 $tiemporespuesta=@()
@@ -34,35 +40,48 @@ $t=0
 $tping=0
 
 
+#Compruebo si responden al ping
+if (Test-Connection $uri -ErrorAction SilentlyContinue -Count 1){
+    $responde_al_ping=$TRUE
+}
+else{
+    $responde_al_ping=$FALSE
+}
+
+
 
 #$htmlgraficas="<HTML><TITLE>TIEMPOS WEBS EFE</TITLE><BODY><H2> WEBS EFE</H2><Table>"
 
 
-for ($i=0; $i -le 2  ;$i++){
+for ($i=0; $i -le $numero_medidas  ;$i++){
+
+Write-Host $i
 
 #$Outputreport = "<HTML><TITLE>Website Availability Report</TITLE><BODY background-color:peachpuff><font color =""#99000"" face=""Microsoft Tai le""><H2> Website Availability Report </H2></font><Table border=1 cellpadding=0 cellspacing=0><TR bgcolor=gray align=center><TD><B>URL</B></TD><TD><B>StatusCode</B></TD><TD><B>StatusDescription</B></TD><TD><B>ResponseLength</B></TD><TD><B>TimeTaken</B></TD></TR>"
-
 #$Outputreport += "<TR bgcolor=red>" 
-
 #$Outputreport += "<TD>$($Entry.uri)</TD><TD align=center>$($Entry.StatusCode)</TD><TD align=center>$($Entry.StatusDescription)</TD><TD align=center>$($Entry.ResponseLength)</TD><TD align=center>$($Entry.timetaken)</TD></TR>"
-
 #$Outputreport += "</Table></BODY></HTML>" 
 
-$resultadoping=(Test-Connection $uri -ErrorAction SilentlyContinue |Measure-Object -Property responsetime -Average).Average
+ if ($responde_al_ping=$TRUE){
 
 
-$tiemporespuestaping+=$resultadoping
-$tiemposping+=$tping
-$tping=$tping+5
+    $resultadoping=(Test-Connection $uri -ErrorAction SilentlyContinue |Measure-Object -Property responsetime -Average).Average    #consigo la media de tiempos de ping
 
-$resultado = Measure-Command { $request = Invoke-WebRequest -Uri $uri }
-#$datosservidores.Add($Uri,$resultado.TotalMilliseconds)
-$tiemporespuesta+=($resultado.TotalMilliseconds)
-$tiempos+=$t
-$t=$t+5
+    $tiemporespuestaping+=$resultadoping
+    $tiemposping+=$tping
+    $tping=$tping+$tiempo_entre_medidas
+
+}
 
 
-Start-Sleep 2
+    $resultado = Measure-Command { $request = Invoke-WebRequest -Uri $uri }           #Consigo el tiempo que tarda en responde la web
+    #$datosservidores.Add($Uri,$resultado.TotalMilliseconds)
+    $tiemporespuesta+=($resultado.TotalMilliseconds)
+    $tiempos+=$t
+    $t=$t+$tiempo_entre_medidas
+
+
+    Start-Sleep $tiempo_entre_medidas
 }
 
 $pings+=,$tiemporespuestaping
@@ -72,15 +91,12 @@ $respuestas+=,$tiemporespuesta
 #$pings
 #$pings[0]
 
-
 #$datosservidores |fl *
-
 
 #$tiempos |fl *
 #$tiemporespuesta |fl *
 #$tiemposping |fl *
 #$tiemporespuestaping |fl *
-
 
 
 # create chart object 
@@ -127,7 +143,7 @@ $Form.Height = 800
 $Form.controls.add($Chart) 
 $Form.Add_Shown({$Form.Activate()}) 
 #$Form.ShowDialog()
-$directorio="D:\powershell\url\checkstiemposweb\"+$uri+".png"
+$directorio="G:\github\checkstiemposweb\checktiemposweb\"+$uri+".png"
 "">directorio
 $Chart.SaveImage($directorio,"PNG")
 "<TR> <TD> <IMG SRC=$directorio> </TD></TR>" >>$htmlgraficas
@@ -135,5 +151,8 @@ $Chart.SaveImage($directorio,"PNG")
 
 $j++
 }
+
+
+
 "</Table></BODY></HTML>" >> $htmlgraficas
 #$htmlgraficas| out-file D:\powershell\url\htmlgraficas.html
